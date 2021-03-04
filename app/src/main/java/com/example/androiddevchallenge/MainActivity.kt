@@ -23,14 +23,14 @@ import androidx.compose.animation.core.*
 import androidx.compose.animation.splineBasedDecay
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.verticalDrag
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Button
+import androidx.compose.material.Scaffold
 import androidx.compose.material.Text
+import androidx.compose.material.TopAppBar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -44,11 +44,12 @@ import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.constraintlayout.compose.ConstraintLayout
 import com.example.androiddevchallenge.ui.theme.MyTheme
-import com.example.androiddevchallenge.ui.theme.Numbers
-import com.example.androiddevchallenge.ui.theme.PathNumber
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
+import com.example.androiddevchallenge.ui.theme.AnimatedNumbers
+import com.example.androiddevchallenge.ui.theme.AnimatedNumber
+import kotlinx.coroutines.*
+import java.time.Duration
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -57,7 +58,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MyTheme(darkTheme = true) {
+            MyTheme(darkTheme = false) {
                 MyApp()
 //                Gesture()
             }
@@ -69,19 +70,19 @@ class MainActivity : AppCompatActivity() {
 @Composable
 fun MyApp() {
 
-    var displayedNumber by remember { mutableStateOf(Numbers.Zero) }
-    val transition = updateTransition(targetState = displayedNumber)
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        DrawNumber(
-            pathNumber = displayedNumber,
-            transition = transition,
-            modifier = Modifier
-                .requiredSize(100.dp)
-                .clickable { displayedNumber++ }
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar {
+                Text(text = "Blabla")
+            }
+        }
+    ) {
+        CountdownView(
+            countdownCurrentValue = Duration.ofMinutes(10L).toMillis(),
+            modifier = Modifier.fillMaxSize()
         )
     }
-
 
 
 //    val offset = remember { Animatable(Offset(0f, 0f), Offset.VectorConverter) }
@@ -147,6 +148,7 @@ fun MyApp() {
 
 @Composable
 fun CountdownView(
+    countdownCurrentValue: Long,
     modifier: Modifier = Modifier
 ) {
 //    var eventPresentationType by remember { mutableStateOf(false) }
@@ -155,23 +157,201 @@ fun CountdownView(
 //        mutableStateOf(false)
 //    })
 //    var value by remember { mutableStateOf<Boolean>(false) }
+//    var countdownValue by remember { mutableStateOf(countdownCurrentValue) }
     val (started, setStarted) = remember { mutableStateOf(false) }
 
-    CountdownButton(
-        started = started,
-        onCountdownButtonClick = { setStarted(!started) },
-        modifier = modifier
-    )
+    "Recomposing all".hozLog()
+
+    val countdownValue = remember { Animatable(countdownCurrentValue.toFloat()) }
+    LaunchedEffect(started) {
+        if (started) {
+            do {
+                delay(1000L)
+                countdownValue.animateTo(countdownValue.value - 1000L)
+            } while (started)
+        }
+    }
+
+    ConstraintLayout(modifier = modifier) {
+
+        "Recomposing CountdownDisplay layout".hozLog()
+        val (button, display) = createRefs()
+
+        CountdownDisplay(
+            currentValue = countdownValue.value.toLong(),
+            modifier = Modifier.constrainAs(display) {
+                start.linkTo(parent.start)
+                end.linkTo(parent.end)
+                bottom.linkTo(button.top, 16.dp)
+            }
+        )
+        CountdownButton(
+            started = started,
+            onCountdownButtonClick = { setStarted(!started) },
+            modifier = Modifier.constrainAs(button) {
+                top.linkTo(parent.top)
+                start.linkTo(parent.start)
+                end.linkTo(parent.end)
+                bottom.linkTo(parent.bottom)
+            }
+        )
+    }
 }
 
 @Composable
 fun CountdownDisplay(
     currentValue: Long,
-    modifier: Modifier = Modifier,
-    editable: Boolean = false,
-    onCountdownEdit: (Long) -> Unit = {}
+    modifier: Modifier = Modifier
 ) {
 
+    val duration = Duration.ofMillis(currentValue)
+    val hours = duration.toHours()
+    val minutes = duration.minusHours(hours).toMinutes()
+    val seconds = duration.minusHours(hours).minusMinutes(minutes).seconds
+
+    "Hours : $hours, minutes : $minutes, seconds : $seconds".hozLog()
+
+    val hourDecade = min(hours.toInt() / 10, 9)
+    val hour1Value = rememberUpdatedState(newValue = findAppropriateAnimatedNumber(hourDecade))
+    val hour2Value =
+        rememberUpdatedState(newValue = findAppropriateAnimatedNumber(hourDecade.rem(10).toInt()))
+
+    val minuteDecade = minutes.toInt() / 10
+    val minute1Value = rememberUpdatedState(newValue = findAppropriateAnimatedNumber(minuteDecade))
+    val minute2Value =
+        rememberUpdatedState(newValue = findAppropriateAnimatedNumber(minutes.rem(10).toInt()))
+
+    val secondDecade = seconds.toInt() / 10
+    val second1Value = rememberUpdatedState(newValue = findAppropriateAnimatedNumber(secondDecade))
+    val second2Value =
+        rememberUpdatedState(newValue = findAppropriateAnimatedNumber(seconds.rem(10).toInt()))
+
+    val hour1Transition = updateTransition(targetState = hour1Value.value)
+    val hour2Transition = updateTransition(targetState = hour2Value.value)
+
+    val minute1Transition = updateTransition(targetState = minute1Value.value)
+    val minute2Transition = updateTransition(targetState = minute2Value.value)
+
+    val second1Transition = updateTransition(targetState = second1Value.value)
+    val second2Transition = updateTransition(targetState = second2Value.value)
+
+    ConstraintLayout(
+        modifier = modifier
+            .requiredHeight(100.dp)
+            .fillMaxWidth()
+    ) {
+
+        val (hour1, hour2, minute1, minute2, second1, second2) = createRefs()
+
+        Number(
+            animatedNumber = hour1Value.value,
+            transition = hour1Transition,
+            modifier = Modifier
+                .requiredSize(50.dp)
+                .constrainAs(hour1) {
+                    top.linkTo(parent.top)
+                    start.linkTo(parent.start, 8.dp)
+                    end.linkTo(hour2.start, 8.dp)
+                }
+        )
+
+        Number(
+            animatedNumber = hour2Value.value,
+            transition = hour2Transition,
+            modifier = Modifier
+                .requiredSize(50.dp)
+                .constrainAs(hour2) {
+                    top.linkTo(parent.top)
+                    start.linkTo(hour1.end)
+                    end.linkTo(minute1.start, 8.dp)
+                }
+        )
+
+        Number(
+            animatedNumber = minute1Value.value,
+            transition = minute1Transition,
+            modifier = Modifier
+                .requiredSize(50.dp)
+                .constrainAs(minute1) {
+                    top.linkTo(parent.top)
+                    start.linkTo(hour2.end)
+                    end.linkTo(minute2.start, 8.dp)
+                }
+        )
+
+        Number(
+            animatedNumber = minute2Value.value,
+            transition = minute2Transition,
+            modifier = Modifier
+                .requiredSize(50.dp)
+                .constrainAs(minute2) {
+                    top.linkTo(parent.top)
+                    start.linkTo(minute1.end)
+                    end.linkTo(second1.start, 8.dp)
+                }
+        )
+
+        Number(
+            animatedNumber = second1Value.value,
+            transition = second1Transition,
+            modifier = Modifier
+                .requiredSize(50.dp)
+                .constrainAs(second1) {
+                    top.linkTo(parent.top)
+                    start.linkTo(minute2.end)
+                    end.linkTo(second2.start, 8.dp)
+                }
+        )
+
+        Number(
+            animatedNumber = second2Value.value,
+            transition = second2Transition,
+            modifier = Modifier
+                .requiredSize(50.dp)
+                .constrainAs(second2) {
+                    top.linkTo(parent.top)
+                    start.linkTo(second1.end)
+                    end.linkTo(parent.end, 8.dp)
+                }
+        )
+
+    }
+}
+
+fun findAppropriateAnimatedNumber(digit: Int): AnimatedNumber {
+    return when (digit) {
+        0 -> {
+            AnimatedNumbers.Zero
+        }
+        1 -> {
+            AnimatedNumbers.One
+        }
+        2 -> {
+            AnimatedNumbers.Two
+        }
+        3 -> {
+            AnimatedNumbers.Three
+        }
+        4 -> {
+            AnimatedNumbers.Four
+        }
+        5 -> {
+            AnimatedNumbers.Five
+        }
+        6 -> {
+            AnimatedNumbers.Six
+        }
+        7 -> {
+            AnimatedNumbers.Seven
+        }
+        8 -> {
+            AnimatedNumbers.Eight
+        }
+        9 -> {
+            AnimatedNumbers.Nine
+        }
+        else -> AnimatedNumbers.Zero
+    }
 }
 
 @Composable
@@ -229,33 +409,30 @@ fun DrawOne(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun DrawNumber(pathNumber: PathNumber, transition: Transition<PathNumber>, modifier: Modifier = Modifier) {
-    DrawNumber(
-        moveCommand = pathNumber.moveCommand,
-        cubicCommand1 = pathNumber.cubicCommand1,
-        cubicCommand2 = pathNumber.cubicCommand2,
-        cubicCommand3 = pathNumber.cubicCommand3,
-        cubicCommand4 = pathNumber.cubicCommand4,
+fun Number(
+    animatedNumber: AnimatedNumber,
+    transition: Transition<AnimatedNumber>,
+    modifier: Modifier = Modifier
+) {
+    Number(
+        moveCommand = animatedNumber.moveCommand,
+        cubicCommand1 = animatedNumber.cubicCommand1,
+        cubicCommand2 = animatedNumber.cubicCommand2,
+        cubicCommand3 = animatedNumber.cubicCommand3,
+        cubicCommand4 = animatedNumber.cubicCommand4,
         transition = transition,
         modifier = modifier
     )
 }
 
 @Composable
-fun DrawNumberDWqdq(
-    modifier: Modifier = Modifier
-) {
-
-}
-
-@Composable
-fun DrawNumber(
+fun Number(
     moveCommand: Pair<Float, Float>,
     cubicCommand1: List<Float>,
     cubicCommand2: List<Float>,
     cubicCommand3: List<Float>,
     cubicCommand4: List<Float>,
-    transition: Transition<PathNumber>,
+    transition: Transition<AnimatedNumber>,
     modifier: Modifier = Modifier
 ) {
 
@@ -265,7 +442,6 @@ fun DrawNumber(
     val moveCommandY by transition.animateFloat {
         moveCommand.second
     }
-
     val cubicCommand11X by transition.animateFloat {
         cubicCommand1[0]
     }
@@ -284,7 +460,6 @@ fun DrawNumber(
     val cubicCommand13Y by transition.animateFloat {
         cubicCommand1[5]
     }
-
     val cubicCommand21X by transition.animateFloat {
         cubicCommand2[0]
     }
@@ -303,7 +478,6 @@ fun DrawNumber(
     val cubicCommand23Y by transition.animateFloat {
         cubicCommand2[5]
     }
-
     val cubicCommand31X by transition.animateFloat {
         cubicCommand3[0]
     }
@@ -322,7 +496,6 @@ fun DrawNumber(
     val cubicCommand33Y by transition.animateFloat {
         cubicCommand3[5]
     }
-
     val cubicCommand41X by transition.animateFloat {
         cubicCommand4[0]
     }
@@ -551,215 +724,6 @@ fun Modifier.test(): Modifier = composed {
             IntOffset(0, offsetY.roundToInt())
         }
 }
-//
-//@Composable
-//fun NumberPicker(
-//    state: MutableState<Int>,
-//    modifier: Modifier = Modifier,
-//    range: IntRange? = null,
-//    textStyle: TextStyle = LocalTextStyle.current,
-//) {
-//    val coroutineScope = rememberCoroutineScope()
-//    val numbersColumnHeight = 36.dp
-//    val halvedNumbersColumnHeight = numbersColumnHeight / 2
-//    val halvedNumbersColumnHeightPx = with(LocalDensity.current) { halvedNumbersColumnHeight.toPx() }
-//
-//    fun animatedStateValue(offset: Float): Int = state.value - (offset / halvedNumbersColumnHeightPx).toInt()
-//
-//    val animatedOffset = remember { Animatable(0f) }.apply {
-//        if (range != null) {
-//            val offsetRange = remember(state.value, range) {
-//                val value = state.value
-//                val first = -(range.last - value) * halvedNumbersColumnHeightPx
-//                val last = -(range.first - value) * halvedNumbersColumnHeightPx
-//                first..last
-//            }
-//            updateBounds(offsetRange.start, offsetRange.endInclusive)
-//        }
-//    }
-//    val coercedAnimatedOffset = animatedOffset.value % halvedNumbersColumnHeightPx
-//    val animatedStateValue = animatedStateValue(animatedOffset.value)
-//
-//    Column(
-//        modifier = modifier
-//            .wrapContentSize()
-//            .draggable(
-//                state = rememberDraggableState(onDelta = {
-//                    coroutineScope.launch {
-//                        animatedOffset.snapTo(animatedOffset.value + it)
-//                    }
-//                }),
-//                orientation = Orientation.Vertical,
-//                onDragStopped = { velocity ->
-//                    coroutineScope.launch {
-//                        val flingConfig = FlingConfig(
-//                            decayAnimation = FloatExponentialDecaySpec(
-//                                frictionMultiplier = 20f
-//                            ),
-//                            adjustTarget = { target ->
-//                                val coercedTarget = target % halvedNumbersColumnHeightPx
-//                                val coercedAnchors = listOf(
-//                                    -halvedNumbersColumnHeightPx,
-//                                    0f,
-//                                    halvedNumbersColumnHeightPx
-//                                )
-//                                val coercedPoint =
-//                                    coercedAnchors.minByOrNull { abs(it - coercedTarget) }!!
-//                                val base =
-//                                    halvedNumbersColumnHeightPx * (target / halvedNumbersColumnHeightPx).toInt()
-//                                val adjusted = coercedPoint + base
-//                                TargetBasedAnimation(adjusted, SpringSpec())
-//                            }
-//                        )
-//                        val endValue = animatedOffset.fling(
-//                            initialVelocity = velocity,
-//                            flingConfig = flingConfig,
-//                        ).endState.value
-//
-//                        state.value = animatedStateValue(endValue)
-//                        animatedOffset.snapTo(0f)
-//                    }
-//                }
-//            )
-//    ) {
-//        val spacing = 4.dp
-//
-//        val arrowColor = MaterialTheme.colors.onSecondary.copy(alpha = ContentAlpha.disabled)
-//
-////        Arrow(direction = ArrowDirection.UP, tint = arrowColor)
-//
-//        Spacer(modifier = Modifier.height(spacing))
-//
-//        Box(
-//            modifier = Modifier
-//                .align(Alignment.CenterHorizontally)
-//                .offset(y = coercedAnimatedOffset.dp)
-////                .offset(y = { coercedAnimatedOffset.roundToInt() })
-//        ) {
-//            val baseLabelModifier = Modifier.align(Alignment.Center)
-//            ProvideTextStyle(textStyle) {
-//                Label(
-//                    text = (animatedStateValue - 1).toString(),
-//                    modifier = baseLabelModifier
-//                        .offset(y = -halvedNumbersColumnHeight)
-//                        .alpha(coercedAnimatedOffset / halvedNumbersColumnHeightPx)
-//                )
-//                Label(
-//                    text = animatedStateValue.toString(),
-//                    modifier = baseLabelModifier
-//                        .alpha(1 - abs(coercedAnimatedOffset) / halvedNumbersColumnHeightPx)
-//                )
-//                Label(
-//                    text = (animatedStateValue + 1).toString(),
-//                    modifier = baseLabelModifier
-//                        .offset(y = halvedNumbersColumnHeight)
-//                        .alpha(-coercedAnimatedOffset / halvedNumbersColumnHeightPx)
-//                )
-//            }
-//        }
-//
-//        Spacer(modifier = Modifier.height(spacing))
-//
-////        Arrow(direction = ArrowDirection.DOWN, tint = arrowColor)
-//    }
-//}
-
-//fun Modifier.swipeToDismiss(): Modifier = composed {
-//    val offsetX = remember { Animatable(0f) }
-//    pointerInput(Unit) {
-//        // Used to calculate fling decay.
-//        val decay = splineBasedDecay<Float>(this)
-//        // Use suspend functions for touch events and the Animatable.
-//        coroutineScope {
-//            while (true) {
-//                // Detect a touch down event.
-//                val pointerId = awaitPointerEventScope { awaitFirstDown().id }
-//                "pointerId : $pointerId".hozLog()
-//                val velocityTracker = VelocityTracker()
-//                // Stop any ongoing animation
-//                offsetX.stop()
-//                awaitPointerEventScope {
-//                    horizontalDrag(pointerId) { change ->
-//                        "new touch : ${change.position}, positionChange : ${change.positionChange().x}".hozLog()
-//                        // Update the animation value with touch events.
-//                        launch {
-//                            offsetX.snapTo(
-//                                offsetX.value + change.positionChange().x
-//                            )
-//                        }
-//                        velocityTracker.addPosition(
-//                            change.uptimeMillis,
-//                            change.position
-//                        )
-//                    }
-//                }
-//                // No longer receiving touch events. Prepare the animation.
-//                val velocity = velocityTracker.calculateVelocity().x
-//                "new velocity : $velocity".hozLog()
-//                val targetOffsetX = decay.calculateTargetValue(
-//                    offsetX.value,
-//                    velocity
-//                )
-//                "targetOffsetX : $targetOffsetX"
-//                // The animation stops when it reaches the bounds.
-//                offsetX.updateBounds(
-//                    lowerBound = -size.width.toFloat(),
-//                    upperBound = size.width.toFloat()
-//                )
-//                "right before last coroutine".hozLog()
-//                launch {
-//                    "last coroutine".hozLog()
-//                    if (targetOffsetX.absoluteValue <= size.width) {
-//                        // Not enough velocity; Slide back.
-//                        "Not enough velocity; Slide back.".hozLog()
-//                        offsetX.animateTo(
-//                            targetValue = 0f,
-//                            initialVelocity = velocity
-//                        )
-//                    } else {
-//                        // The element was swiped away.
-//                        offsetX.animateDecay(velocity, decay)
-//                        "onDismiss call".hozLog()
-//                        onDismissed()
-//                    }
-//                }
-//            }
-//        }
-//    }.offset {
-//        "offsetting to ${offsetX.value.roundToInt()}".hozLog()
-//        IntOffset(offsetX.value.roundToInt(), 0)
-//    }
-//}
-
-
-fun onDismissed() {
-
-}
-
-@Composable
-private fun Label(text: String, modifier: Modifier) {
-    Text(
-        text = text,
-        modifier = modifier.pointerInput(Unit) {
-            detectTapGestures(onLongPress = {
-                // FIXME: Empty to disable text selection
-            })
-        }
-    )
-
-}
-
-//@Preview
-//@Composable
-//fun PreviewNumberPicker() {
-//    Box(modifier = Modifier.fillMaxSize()) {
-//        NumberPicker(
-//            state = mutableStateOf(9),
-//            range = 0..10,
-//            modifier = Modifier.align(Alignment.Center)
-//        )
-//    }
-//}
 
 fun String.hozLog() {
     Log.d("Hoz", this)

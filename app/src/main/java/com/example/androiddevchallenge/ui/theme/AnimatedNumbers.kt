@@ -1,7 +1,7 @@
 package com.example.androiddevchallenge.ui.theme
 
-object Numbers {
-    val Zero = PathNumber(
+object AnimatedNumbers {
+    val Zero = AnimatedNumber(
         moveCommand = 0.24585635359116f to 0.552486187845304f,
         cubicCommand1 = listOf(
             0.24585635359116f,
@@ -36,7 +36,7 @@ object Numbers {
             0.552486187845304f
         )
     )
-    val One = PathNumber(
+    val One = AnimatedNumber(
         moveCommand = 0.425414364640884f to 0.113259668508287f,
         cubicCommand1 = listOf(
             0.425414364640884f,
@@ -56,7 +56,7 @@ object Numbers {
             0.577348066298343f, 1f, 0.577348066298343f, 1f, 0.577348066298343f, 1f
         )
     )
-    val Two = PathNumber(
+    val Two = AnimatedNumber(
         moveCommand = 0.30939226519337f to 0.331491712707182f,
         cubicCommand1 = listOf(
             0.325966850828729f,
@@ -91,7 +91,7 @@ object Numbers {
             0.977900552486188f
         )
     )
-    val Three = PathNumber(
+    val Three = AnimatedNumber(
         moveCommand = 0.361878453038674f to 0.298342541436464f,
         cubicCommand1 = listOf(
             0.348066298342541f,
@@ -126,7 +126,7 @@ object Numbers {
             0.790055248618785f
         )
     )
-    val Four = PathNumber(
+    val Four = AnimatedNumber(
         moveCommand = 0.856353591160221f to 0.806629834254144f,
         cubicCommand1 = listOf(
             0.856353591160221f,
@@ -161,7 +161,7 @@ object Numbers {
             0.988950276243094f
         )
     )
-    val Five = PathNumber(
+    val Five = AnimatedNumber(
         moveCommand = 0.806629834254144f to 0.110497237569061f,
         cubicCommand1 = listOf(
             0.502762430939227f,
@@ -196,7 +196,7 @@ object Numbers {
             0.850828729281768f
         )
     )
-    val Six = PathNumber(
+    val Six = AnimatedNumber(
         moveCommand = 0.607734806629834f to 0.110497237569061f,
         cubicCommand1 = listOf(
             0.607734806629834f,
@@ -231,7 +231,7 @@ object Numbers {
             0.552486187845304f
         )
     )
-    val Seven = PathNumber(
+    val Seven = AnimatedNumber(
         moveCommand = 0.259668508287293f to 0.116022099447514f,
         cubicCommand1 = listOf(
             0.259668508287293f,
@@ -261,7 +261,7 @@ object Numbers {
             0.460405157f, 0.7053406998f, 0.25414364640884f, 1f, 0.25414364640884f, 1f
         )
     )
-    val Eight = PathNumber(
+    val Eight = AnimatedNumber(
         moveCommand = 0.558011049723757f to 0.530386740331492f,
         cubicCommand1 = listOf(
             0.243093922651934f,
@@ -296,7 +296,7 @@ object Numbers {
             0.530386740331492f
         )
     )
-    val Nine = PathNumber(
+    val Nine = AnimatedNumber(
         moveCommand = 0.80939226519337f to 0.552486187845304f,
         cubicCommand1 = listOf(
             0.685082872928177f,
@@ -332,12 +332,3 @@ object Numbers {
         )
     )
 }
-
-/*
-  <string name="path_nine">
-    M 0.80939226519337,  0.552486187845304
-    C 0.685082872928177, 0.751381215469613  0.298342541436464, 0.740331491712707  0.259668508287293, 0.408839779005525
-    C 0.232044198895028, 0.0441988950276243 0.81767955801105, -0.0441988950276243 0.850828729281768, 0.408839779005525
-    C 0.839779005524862, 0.596685082872928  0.712707182320442, 0.668508287292818  0.497237569060773, 0.994475138121547
-    C 0.497237569060773, 0.994475138121547  0.497237569060773, 0.994475138121547  0.497237569060773, 0.994475138121547
-  </string>*/
