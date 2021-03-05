@@ -78,8 +78,9 @@ fun MyApp() {
             }
         }
     ) {
+//        Gesture()
         CountdownView(
-            countdownCurrentValue = Duration.ofMinutes(10L).toMillis(),
+            countdownValue = Duration.ofMinutes(10L),
             modifier = Modifier.fillMaxSize()
         )
     }
@@ -148,26 +149,19 @@ fun MyApp() {
 
 @Composable
 fun CountdownView(
-    countdownCurrentValue: Long,
+    countdownValue: Duration,
     modifier: Modifier = Modifier
 ) {
-//    var eventPresentationType by remember { mutableStateOf(false) }
-//    var started by remember { mutableStateOf(false) }
-//    var truc by remember(calculation = {
-//        mutableStateOf(false)
-//    })
-//    var value by remember { mutableStateOf<Boolean>(false) }
-//    var countdownValue by remember { mutableStateOf(countdownCurrentValue) }
-    val (started, setStarted) = remember { mutableStateOf(false) }
+    var started by remember { mutableStateOf(false) }
 
     "Recomposing all".hozLog()
 
-    val countdownValue = remember { Animatable(countdownCurrentValue.toFloat()) }
+    val animatableCounter = remember { Animatable(countdownValue.toMillis().toFloat()) }
     LaunchedEffect(started) {
         if (started) {
             do {
+                animatableCounter.animateTo(animatableCounter.value - 1000L)
                 delay(1000L)
-                countdownValue.animateTo(countdownValue.value - 1000L)
             } while (started)
         }
     }
@@ -178,7 +172,7 @@ fun CountdownView(
         val (button, display) = createRefs()
 
         CountdownDisplay(
-            currentValue = countdownValue.value.toLong(),
+            currentValue = animatableCounter.value.toLong(),
             modifier = Modifier.constrainAs(display) {
                 start.linkTo(parent.start)
                 end.linkTo(parent.end)
@@ -187,7 +181,7 @@ fun CountdownView(
         )
         CountdownButton(
             started = started,
-            onCountdownButtonClick = { setStarted(!started) },
+            onCountdownButtonClick = { started = !started },
             modifier = Modifier.constrainAs(button) {
                 top.linkTo(parent.top)
                 start.linkTo(parent.start)
@@ -209,31 +203,31 @@ fun CountdownDisplay(
     val minutes = duration.minusHours(hours).toMinutes()
     val seconds = duration.minusHours(hours).minusMinutes(minutes).seconds
 
-    "Hours : $hours, minutes : $minutes, seconds : $seconds".hozLog()
-
     val hourDecade = min(hours.toInt() / 10, 9)
-    val hour1Value = rememberUpdatedState(newValue = findAppropriateAnimatedNumber(hourDecade))
-    val hour2Value =
-        rememberUpdatedState(newValue = findAppropriateAnimatedNumber(hourDecade.rem(10).toInt()))
+    val hourDecadeValue = rememberUpdatedState(newValue = findAppropriateAnimatedNumber(hourDecade))
+    val hourUnitValue =
+        rememberUpdatedState(newValue = findAppropriateAnimatedNumber(hours.rem(10).toInt()))
 
     val minuteDecade = minutes.toInt() / 10
-    val minute1Value = rememberUpdatedState(newValue = findAppropriateAnimatedNumber(minuteDecade))
-    val minute2Value =
+    val minuteDecadeValue =
+        rememberUpdatedState(newValue = findAppropriateAnimatedNumber(minuteDecade))
+    val minuteUnitValue =
         rememberUpdatedState(newValue = findAppropriateAnimatedNumber(minutes.rem(10).toInt()))
 
     val secondDecade = seconds.toInt() / 10
-    val second1Value = rememberUpdatedState(newValue = findAppropriateAnimatedNumber(secondDecade))
-    val second2Value =
+    val secondDecadeValue =
+        rememberUpdatedState(newValue = findAppropriateAnimatedNumber(secondDecade))
+    val secondUnitValue =
         rememberUpdatedState(newValue = findAppropriateAnimatedNumber(seconds.rem(10).toInt()))
 
-    val hour1Transition = updateTransition(targetState = hour1Value.value)
-    val hour2Transition = updateTransition(targetState = hour2Value.value)
+    val hourDecadeTransition = updateTransition(targetState = hourDecadeValue.value)
+    val hourUnitTransition = updateTransition(targetState = hourUnitValue.value)
 
-    val minute1Transition = updateTransition(targetState = minute1Value.value)
-    val minute2Transition = updateTransition(targetState = minute2Value.value)
+    val minuteDecadeTransition = updateTransition(targetState = minuteDecadeValue.value)
+    val minuteUnitTransition = updateTransition(targetState = minuteUnitValue.value)
 
-    val second1Transition = updateTransition(targetState = second1Value.value)
-    val second2Transition = updateTransition(targetState = second2Value.value)
+    val secondDecadeTransition = updateTransition(targetState = secondDecadeValue.value)
+    val secondUnitTransition = updateTransition(targetState = secondUnitValue.value)
 
     ConstraintLayout(
         modifier = modifier
@@ -241,76 +235,76 @@ fun CountdownDisplay(
             .fillMaxWidth()
     ) {
 
-        val (hour1, hour2, minute1, minute2, second1, second2) = createRefs()
+        val (hourDecade, hourUnit, minuteDecade, minuteUnit, secondDecade, secondUnit) = createRefs()
 
         Number(
-            animatedNumber = hour1Value.value,
-            transition = hour1Transition,
+            animatedNumber = hourDecadeValue.value,
+            transition = hourDecadeTransition,
             modifier = Modifier
                 .requiredSize(50.dp)
-                .constrainAs(hour1) {
+                .constrainAs(hourDecade) {
                     top.linkTo(parent.top)
                     start.linkTo(parent.start, 8.dp)
-                    end.linkTo(hour2.start, 8.dp)
+                    end.linkTo(hourUnit.start, 8.dp)
                 }
         )
 
         Number(
-            animatedNumber = hour2Value.value,
-            transition = hour2Transition,
+            animatedNumber = hourUnitValue.value,
+            transition = hourUnitTransition,
             modifier = Modifier
                 .requiredSize(50.dp)
-                .constrainAs(hour2) {
+                .constrainAs(hourUnit) {
                     top.linkTo(parent.top)
-                    start.linkTo(hour1.end)
-                    end.linkTo(minute1.start, 8.dp)
+                    start.linkTo(hourDecade.end)
+                    end.linkTo(minuteDecade.start, 8.dp)
                 }
         )
 
         Number(
-            animatedNumber = minute1Value.value,
-            transition = minute1Transition,
+            animatedNumber = minuteDecadeValue.value,
+            transition = minuteDecadeTransition,
             modifier = Modifier
                 .requiredSize(50.dp)
-                .constrainAs(minute1) {
+                .constrainAs(minuteDecade) {
                     top.linkTo(parent.top)
-                    start.linkTo(hour2.end)
-                    end.linkTo(minute2.start, 8.dp)
+                    start.linkTo(hourUnit.end)
+                    end.linkTo(minuteUnit.start, 8.dp)
                 }
         )
 
         Number(
-            animatedNumber = minute2Value.value,
-            transition = minute2Transition,
+            animatedNumber = minuteUnitValue.value,
+            transition = minuteUnitTransition,
             modifier = Modifier
                 .requiredSize(50.dp)
-                .constrainAs(minute2) {
+                .constrainAs(minuteUnit) {
                     top.linkTo(parent.top)
-                    start.linkTo(minute1.end)
-                    end.linkTo(second1.start, 8.dp)
+                    start.linkTo(minuteDecade.end)
+                    end.linkTo(secondDecade.start, 8.dp)
                 }
         )
 
         Number(
-            animatedNumber = second1Value.value,
-            transition = second1Transition,
+            animatedNumber = secondDecadeValue.value,
+            transition = secondDecadeTransition,
             modifier = Modifier
                 .requiredSize(50.dp)
-                .constrainAs(second1) {
+                .constrainAs(secondDecade) {
                     top.linkTo(parent.top)
-                    start.linkTo(minute2.end)
-                    end.linkTo(second2.start, 8.dp)
+                    start.linkTo(minuteUnit.end)
+                    end.linkTo(secondUnit.start, 8.dp)
                 }
         )
 
         Number(
-            animatedNumber = second2Value.value,
-            transition = second2Transition,
+            animatedNumber = secondUnitValue.value,
+            transition = secondUnitTransition,
             modifier = Modifier
                 .requiredSize(50.dp)
-                .constrainAs(second2) {
+                .constrainAs(secondUnit) {
                     top.linkTo(parent.top)
-                    start.linkTo(second1.end)
+                    start.linkTo(secondDecade.end)
                     end.linkTo(parent.end, 8.dp)
                 }
         )
