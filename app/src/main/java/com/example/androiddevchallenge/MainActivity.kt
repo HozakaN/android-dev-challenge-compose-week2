@@ -19,6 +19,7 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.*
 import androidx.compose.animation.splineBasedDecay
 import androidx.compose.foundation.Canvas
@@ -78,11 +79,11 @@ fun MyApp() {
             }
         }
     ) {
-//        Gesture()
-        CountdownView(
-            countdownValue = Duration.ofMinutes(10L),
-            modifier = Modifier.fillMaxSize()
-        )
+        Gesture()
+//        CountdownView(
+//            countdownValue = Duration.ofMinutes(10L),
+//            modifier = Modifier.fillMaxSize()
+//        )
     }
 
 
@@ -153,32 +154,48 @@ fun CountdownView(
     modifier: Modifier = Modifier
 ) {
     var started by remember { mutableStateOf(false) }
+    var paused by remember { mutableStateOf(false) }
 
-    "Recomposing all".hozLog()
+    "started value : $started".hozLog()
+    var animatableCounter by
+    remember { mutableStateOf(countdownValue.toMillis()) }
 
-    val animatableCounter = remember { Animatable(countdownValue.toMillis().toFloat()) }
-    LaunchedEffect(started) {
-        if (started) {
-            do {
-                animatableCounter.animateTo(animatableCounter.value - 1000L)
-                delay(1000L)
-            } while (started)
-        }
-    }
+    "animatableCounter value : $animatableCounter".hozLog()
 
     ConstraintLayout(modifier = modifier) {
 
         "Recomposing CountdownDisplay layout".hozLog()
         val (button, display) = createRefs()
 
-        CountdownDisplay(
-            currentValue = animatableCounter.value.toLong(),
-            modifier = Modifier.constrainAs(display) {
-                start.linkTo(parent.start)
-                end.linkTo(parent.end)
-                bottom.linkTo(button.top, 16.dp)
+        LaunchedEffect(started && !paused) {
+            if (started && !paused) {
+                do {
+                    "while ping $animatableCounter".hozLog()
+                    animatableCounter -= 1000L
+                    delay(1000L)
+                } while (started)
             }
-        )
+        }
+
+        Crossfade(targetState = started) {
+            when (it) {
+                true -> {
+                    "displaying countdown".hozLog()
+                    CountdownDisplay(
+                        currentValue = animatableCounter,
+                        modifier = Modifier.constrainAs(display) {
+                            start.linkTo(parent.start)
+                            end.linkTo(parent.end)
+                            bottom.linkTo(button.top, 16.dp)
+                        }
+                    )
+                }
+                false -> {
+                    "displaying gesture".hozLog()
+                    Gesture()
+                }
+            }
+        }
         CountdownButton(
             started = started,
             onCountdownButtonClick = { started = !started },
@@ -558,14 +575,9 @@ fun Gesture() {
             .fillMaxSize()
             .pointerInput(Unit) {
                 val circleSize = 100.dp.value * density
-//                val decay = splineBasedDecay<Float>(this)
                 val offsetDecay = splineBasedDecay<Offset>(this)
                 coroutineScope {
                     while (true) {
-                        // Detect a tap event and obtain its position.
-//                        val position = awaitPointerEventScope {
-//                            awaitFirstDown().position
-//                        }
                         val pointerId = awaitPointerEventScope { awaitFirstDown().id }
                         val velocityTracker = VelocityTracker()
                         offset.stop()
@@ -575,7 +587,7 @@ fun Gesture() {
                                 launch {
                                     val newXOffset = offset.value.x + change.positionChange().x
                                     val newYOffset = offset.value.y + change.positionChange().y
-                                    "newXOffset = $newXOffset, (${size.width.toFloat()})".hozLog()
+//                                    "newXOffset = $newXOffset, (${size.width.toFloat()})".hozLog()
                                     val correctedOffset = Offset(
                                         min(
                                             max(newXOffset, 0f),
@@ -591,27 +603,7 @@ fun Gesture() {
                                 )
                             }
                         }
-                        // No longer receiving touch events. Prepare the animation.
                         val velocity = velocityTracker.calculateVelocity()
-//                        offsetDecay.calculateTargetValue(
-//                            typeConverter = TwoWayConverter({ offset ->
-//                                AnimationVector(offset.x, offset.y)
-//                            }, {
-//                                Offset(it.v1, it.v2)
-//                            }),
-//                            initialValue = offset.value,
-//                            initialVelocity = Offset(velocity.x, velocity.y)
-//                        )
-//                        val targetOffsetX = decay.calculateTargetValue(
-//                            offset.value.x,
-//                            velocity.x
-//                        )
-//                        val targetOffsetY = decay.calculateTargetValue(
-//                            offset.value.y,
-//                            velocity.y
-//                        )
-                        // The animation stops when it reaches the bounds.
-//                        "current offset : ${offset.value.x}, ${offset.value.y}".hozLog()
                         offset.updateBounds(
                             lowerBound = Offset(0f, 0f),
                             upperBound = Offset(
@@ -620,43 +612,17 @@ fun Gesture() {
                             )
                         )
                         launch {
-//                            val newX = if (targetOffsetX.absoluteValue <)
-//                            if (targetOffsetX.absoluteValue <= size.width) {
-//                                 Not enough velocity; Slide back.
-//                                offset.animateTo(
-//                                    targetValue = 0f,
-//                                    initialVelocity = velocity
-//                                )
-//                            } else {
-                            // The element was swiped away.
                             offset.animateDecay(Offset(velocity.x, velocity.y), offsetDecay)
-//                            offset.animateDecay()
-//                            offset.animateDecay(velocity, decay)
-//                                onDismissed()
-//                            }
                         }
-//                        offset.updateBounds(
-//                            lowerBound = -size.width.toFloat(),
-//                            upperBound = size.width.toFloat()
-//                        )
-//                        launch {
-//                            // Animate to the tap position.
-//                            offset.animateTo(position)
-//                        }
                     }
                 }
             }
     ) {
-//        TestComposable(
-//            modifier = Modifier
-//                .requiredSize(100.dp)
-//                .offset { offset.value.toIntOffset() }
-//        )
-        DrawOne(modifier = Modifier
-            .background(color = Color.Blue)
-            .requiredSize(100.dp)
-            .offset { offset.value.toIntOffset() })
-//        Circle(modifier = Modifier.offset { offset.value.toIntOffset() })
+        Circle(modifier = Modifier
+            .offset {
+                "offsetting ${offset.value}".hozLog()
+                offset.value.toIntOffset()
+            })
     }
 }
 
@@ -670,54 +636,6 @@ fun Circle(modifier: Modifier = Modifier) {
 }
 
 private fun Offset.toIntOffset() = IntOffset(x.roundToInt(), y.roundToInt())
-
-
-fun Modifier.random(
-
-): Modifier = composed {
-    var offset by remember { mutableStateOf(Offset(0f, 0f)) }
-    pointerInput(Unit) {
-
-    }.offset { IntOffset(offset.x.roundToInt(), offset.y.roundToInt()) }
-}
-
-fun Modifier.test(): Modifier = composed {
-    var offsetY by remember { mutableStateOf(0f) }
-    pointerInput(Unit) {
-        coroutineScope {
-            val pointerId = awaitPointerEventScope { awaitFirstDown().id }
-            awaitPointerEventScope {
-//                horizontalDrag(pointerId) { change ->
-//                    "new horizontal drag".hozLog()
-//                }
-                verticalDrag(pointerId) { change ->
-                    "new touch : ${change.position}, positionChange : (${change.positionChange().x},${change.positionChange().y})".hozLog()
-                    // Update the animation value with touch events.
-                    launch {
-                        offsetY += change.positionChange().y
-                    }
-                }
-//                verticalDrag(pointerId) { change ->
-//                    "new touch : ${change.position}, positionChange : (${change.positionChange().x},${change.positionChange().y})".hozLog()
-//                    // Update the animation value with touch events.
-//                    launch {
-//                        offsetY += change.positionChange().y
-////                        offsetY.snapTo(
-////                            offsetY.value + change.positionChange().x
-////                        )
-//                    }
-//                    velocityTracker.addPosition(
-//                        change.uptimeMillis,
-//                        change.position
-//                    )
-            }
-        }
-    }
-        .offset {
-            "offsetting to ${offsetY.roundToInt()}".hozLog()
-            IntOffset(0, offsetY.roundToInt())
-        }
-}
 
 fun String.hozLog() {
     Log.d("Hoz", this)
