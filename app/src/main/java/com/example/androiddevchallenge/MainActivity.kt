@@ -19,41 +19,31 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.*
-import androidx.compose.animation.splineBasedDecay
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.verticalDrag
+import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.Button
-import androidx.compose.material.Scaffold
-import androidx.compose.material.Text
-import androidx.compose.material.TopAppBar
+import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
-import androidx.compose.ui.input.pointer.util.VelocityTracker
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.*
 import androidx.constraintlayout.compose.ConstraintLayout
-import com.example.androiddevchallenge.ui.theme.MyTheme
-import com.example.androiddevchallenge.ui.theme.AnimatedNumbers
-import com.example.androiddevchallenge.ui.theme.AnimatedNumber
+import com.example.androiddevchallenge.ui.theme.*
 import kotlinx.coroutines.*
+import java.lang.IllegalStateException
 import java.time.Duration
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.roundToInt
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,144 +57,316 @@ class MainActivity : AppCompatActivity() {
     }
 }
 
-// Start building your app here!
 @Composable
 fun MyApp() {
+    var started by remember { mutableStateOf(false) }
+
+    var countdownValue by remember { mutableStateOf(Duration.ofMinutes(10L)) }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        topBar = {
-            TopAppBar {
-                Text(text = "Blabla")
-            }
-        }
+        modifier = Modifier.fillMaxSize()
     ) {
-        Gesture()
-//        CountdownView(
-//            countdownValue = Duration.ofMinutes(10L),
-//            modifier = Modifier.fillMaxSize()
-//        )
+
+        ConstraintLayout(
+            modifier = Modifier.fillMaxSize()
+        ) {
+
+            val (countdownView, button) = createRefs()
+
+            CountdownView(
+                started = started,
+                onCountdownValueChange = {
+                    countdownValue = it
+                },
+                modifier = Modifier
+                    .wrapContentSize()
+                    .constrainAs(countdownView) {
+                        top.linkTo(parent.top)
+                        bottom.linkTo(parent.bottom)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                    },
+                onEnded = { started = !started }
+            )
+
+            Button(
+                onClick = { started = !started },
+                enabled = !countdownValue.isZero,
+                shape = RoundedCornerShape(50),
+                colors = ButtonDefaults.buttonColors(backgroundColor = Color.Blue, contentColor = Color.White),
+                modifier = Modifier
+                    .background(color = Color.Green, shape = RoundedCornerShape(50))
+                    .constrainAs(button) {
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                        bottom.linkTo(parent.bottom, 16.dp)
+                    }
+            ) {
+                Text(text = if (started) "Stop" else "Start")
+            }
+
+        }
     }
 
-
-//    val offset = remember { Animatable(Offset(0f, 0f), Offset.VectorConverter) }
-////    Surface(color = MaterialTheme.colors.background) {
-////        Text(text = "Ready... Set... GO!")
-////    }
-//    ConstraintLayout(
-//        modifier = Modifier
-//            .fillMaxSize()
-//            .pointerInput(Unit) {
-//                coroutineScope {
-//                    while (true) {
-//                        // Detect a tap event and obtain its position.
-//                        val position = awaitPointerEventScope {
-//                            awaitFirstDown().position
-//                        }
-//                        launch {
-//                            // Animate to the tap position.
-//                            "animating".hozLog()
-//                            offset.animateTo(position)
-//                        }
-//                    }
-//                }
-//            }
-//    ) {
-//
-//        val (startButton, swipeLayout, myBox) = createRefs()
-//
-//        Box(modifier = Modifier
-//            .constrainAs(myBox) {
-//                top.linkTo(parent.top, 16.dp)
-//                start.linkTo(parent.start, 16.dp)
-//            }
-//            .background(color = Color.Blue)
-//            .requiredSize(100.dp)
-//            .offset { offset.value.toIntOffset() }
-//            /*.padding(start = 16.dp, top = 16.dp)*//*.test()*/)
-//
-//        CountdownView(
-//            modifier = Modifier
-//                .constrainAs(startButton) {
-//                    top.linkTo(parent.top)
-//                    start.linkTo(parent.start)
-//                    end.linkTo(parent.end)
-//                    bottom.linkTo(parent.bottom)
-//                }/*.swipeToDismiss()*/
-//        )
-//
-//        Image(
-//            painter = painterResource(id = R.drawable.ic_android_black_24dp),
-//            contentDescription = "",
-//            modifier = Modifier
-//                .requiredSize(100.dp)
-//                .constrainAs(swipeLayout) {
-//                    top.linkTo(parent.top, 16.dp)
-//                    start.linkTo(parent.start)
-//                    end.linkTo(parent.end)
-//                }
-////                .swipeToDismiss()
-//        )
-//    }
 }
 
 @Composable
 fun CountdownView(
-    countdownValue: Duration,
-    modifier: Modifier = Modifier
+    onEnded: () -> Unit,
+    onCountdownValueChange: (Duration) -> Unit,
+    modifier: Modifier = Modifier,
+    started: Boolean = false,
 ) {
-    var started by remember { mutableStateOf(false) }
-    var paused by remember { mutableStateOf(false) }
+    "Hoz2 triggered".hozLog()
 
-    "started value : $started".hozLog()
     var animatableCounter by
-    remember { mutableStateOf(countdownValue.toMillis()) }
+    remember { mutableStateOf(Duration.ofMinutes(10L)) }
 
-    "animatableCounter value : $animatableCounter".hozLog()
+    "Hoz2 triggered animatableCounter = $animatableCounter".hozLog()
 
-    ConstraintLayout(modifier = modifier) {
+    ConstraintLayout(
+        modifier = modifier
+    ) {
 
-        "Recomposing CountdownDisplay layout".hozLog()
-        val (button, display) = createRefs()
+        val (display, picker) = createRefs()
 
-        LaunchedEffect(started && !paused) {
-            if (started && !paused) {
+        LaunchedEffect(started) {
+            if (started) {
                 do {
-                    "while ping $animatableCounter".hozLog()
-                    animatableCounter -= 1000L
+                    animatableCounter = animatableCounter.minusSeconds(1L)
+                    onCountdownValueChange(animatableCounter)
+                    if (animatableCounter.isZero || animatableCounter.isNegative) {
+                        onEnded()
+                    }
                     delay(1000L)
                 } while (started)
             }
         }
 
-        Crossfade(targetState = started) {
-            when (it) {
-                true -> {
-                    "displaying countdown".hozLog()
-                    CountdownDisplay(
-                        currentValue = animatableCounter,
-                        modifier = Modifier.constrainAs(display) {
-                            start.linkTo(parent.start)
-                            end.linkTo(parent.end)
-                            bottom.linkTo(button.top, 16.dp)
-                        }
-                    )
+        if (started) {
+            CountdownDisplay(
+                currentValue = animatableCounter.toMillis(),
+                modifier = Modifier.constrainAs(display) {
+                    start.linkTo(parent.start)
+                    end.linkTo(parent.end)
+                    top.linkTo(parent.top)
+                    bottom.linkTo(parent.bottom)
                 }
-                false -> {
-                    "displaying gesture".hozLog()
-                    Gesture()
+            )
+        } else {
+            CountdownPicker(
+                countdownValue = animatableCounter,
+                onCountdownValueChange = object : CountdownPickerCallback {
+                    override fun onHourDecadeChanged(hourDecade: Int) {
+                        val currentDecade = (animatableCounter.toHours() / 10) * 10
+                        animatableCounter = animatableCounter.minusHours(currentDecade).plusHours(hourDecade * 10L)
+                        onCountdownValueChange(animatableCounter)
+                    }
+
+                    override fun onHourUnitChanged(hourUnit: Int) {
+                        val currentUnit = animatableCounter.toHours().rem(10)
+                        animatableCounter = animatableCounter.minusHours(currentUnit).plusHours(hourUnit.toLong())
+                        onCountdownValueChange(animatableCounter)
+                    }
+
+                    override fun onMinuteDecadeChanged(minuteDecade: Int) {
+                        val hours = animatableCounter.toHours()
+                        val minutes = animatableCounter.minusHours(hours).toMinutes()
+                        val minutesDecade = (minutes / 10) * 10
+                        animatableCounter = animatableCounter.minusMinutes(minutesDecade).plusMinutes(minuteDecade * 10L)
+                        onCountdownValueChange(animatableCounter)
+                    }
+
+                    override fun onMinuteUnitChanged(minuteUnit: Int) {
+                        val hours = animatableCounter.toHours()
+                        val currentUnit = animatableCounter.minusHours(hours).toMinutes().rem(10)
+                        animatableCounter = animatableCounter.minusMinutes(currentUnit).plusMinutes(minuteUnit.toLong())
+                        onCountdownValueChange(animatableCounter)
+                    }
+
+                    override fun onSecondDecadeChanged(secondDecade: Int) {
+                        val hours = animatableCounter.toHours()
+                        val minutes = animatableCounter.minusHours(hours).toMinutes()
+                        val seconds = animatableCounter.minusHours(hours).minusMinutes(minutes).seconds
+                        val secondsDecade = (seconds / 10) * 10
+                        animatableCounter = animatableCounter.minusSeconds(secondsDecade).plusSeconds(secondDecade * 10L)
+                        onCountdownValueChange(animatableCounter)
+                    }
+
+                    override fun onSecondUnitChanged(secondUnit: Int) {
+                        val hours = animatableCounter.toHours()
+                        val minutes = animatableCounter.minusHours(hours).toMinutes()
+                        val seconds = animatableCounter.minusHours(hours).minusMinutes(minutes).seconds
+                        val secondsUnit = seconds.rem(10)
+                        animatableCounter = animatableCounter.minusSeconds(secondsUnit).plusSeconds(secondUnit.toLong())
+                        onCountdownValueChange(animatableCounter)
+                    }
+
+                },
+                modifier = Modifier.constrainAs(picker) {
+                    start.linkTo(parent.start)
+                    end.linkTo(parent.end)
+                    top.linkTo(parent.top)
+                    bottom.linkTo(parent.bottom)
                 }
-            }
+            )
         }
-        CountdownButton(
-            started = started,
-            onCountdownButtonClick = { started = !started },
-            modifier = Modifier.constrainAs(button) {
-                top.linkTo(parent.top)
+    }
+}
+
+interface CountdownPickerCallback {
+    fun onHourDecadeChanged(hourDecade: Int)
+    fun onHourUnitChanged(hourUnit: Int)
+    fun onMinuteDecadeChanged(minuteDecade: Int)
+    fun onMinuteUnitChanged(minuteUnit: Int)
+    fun onSecondDecadeChanged(secondDecade: Int)
+    fun onSecondUnitChanged(secondUnit: Int)
+}
+
+@Composable
+fun CountdownPicker(
+    countdownValue: Duration,
+    onCountdownValueChange: CountdownPickerCallback,
+    modifier: Modifier = Modifier
+) {
+    val millis = countdownValue.toMillis()
+
+    val seconds = (millis / 1000) % 60
+    val minutes = (millis / (1000 * 60) % 60)
+    val hours = (millis / (1000 * 60 * 60) % 24)
+
+    val hourDecade = min(hours.toInt() / 10, 9)
+    val minuteDecade = minutes.toInt() / 10
+    val secondDecade = seconds.toInt() / 10
+
+    ConstraintLayout(
+        modifier = modifier
+    ) {
+
+        val (hourDecadeRef, hourUnitRef, hourColumn, minutesDecadeRef, minuteUnitRef, minuteColumn, secondDecadeRef, secondUnitRef, selectedLineRef) = createRefs()
+
+        val cellHeightDp = 20.dp
+        NumberPicker(
+            selectableRange = 0..9,
+            selectedNumber = hourDecade,
+            onNumberSelect = { oldValue, newValue ->
+                onCountdownValueChange.onHourDecadeChanged(
+                    newValue
+                )
+            },
+            cellHeightDp = cellHeightDp,
+            modifier = Modifier.constrainAs(hourDecadeRef) {
                 start.linkTo(parent.start)
-                end.linkTo(parent.end)
+                top.linkTo(parent.top)
                 bottom.linkTo(parent.bottom)
+                end.linkTo(hourUnitRef.start)
             }
+        )
+        NumberPicker(
+            selectableRange = 0..9,
+            selectedNumber = hours.rem(10).toInt(),
+            onNumberSelect = { oldValue, newValue ->
+                onCountdownValueChange.onHourUnitChanged(
+                    newValue
+                )
+            },
+            modifier = Modifier.constrainAs(hourUnitRef) {
+                start.linkTo(hourDecadeRef.end)
+                bottom.linkTo(hourDecadeRef.bottom)
+                end.linkTo(hourColumn.start)
+            }
+        )
+
+        Text(
+            fontSize = 26.sp,
+            text = ":",
+            modifier = Modifier.constrainAs(hourColumn) {
+                top.linkTo(hourUnitRef.top)
+                bottom.linkTo(hourUnitRef.bottom, 6.dp)
+                start.linkTo(hourUnitRef.end, 8.dp)
+                end.linkTo(minutesDecadeRef.start, 8.dp)
+            }
+        )
+
+        NumberPicker(
+            selectableRange = 0..5,
+            selectedNumber = minuteDecade,
+            onNumberSelect = { oldValue, newValue ->
+                onCountdownValueChange.onMinuteDecadeChanged(
+                    newValue
+                )
+            },
+            modifier = Modifier.constrainAs(minutesDecadeRef) {
+                top.linkTo(parent.top, (cellHeightDp.value * 4).dp)
+                start.linkTo(hourColumn.end)
+                end.linkTo(minuteUnitRef.start)
+            }
+        )
+        NumberPicker(
+            selectableRange = 0..9,
+            selectedNumber = minutes.rem(10).toInt(),
+            onNumberSelect = { oldValue, newValue ->
+                onCountdownValueChange.onMinuteUnitChanged(
+                    newValue
+                )
+            },
+            modifier = Modifier.constrainAs(minuteUnitRef) {
+                start.linkTo(minutesDecadeRef.end)
+                top.linkTo(parent.top)
+                end.linkTo(minuteColumn.start)
+            }
+        )
+
+        Text(
+            fontSize = 26.sp,
+            text = ":",
+            modifier = Modifier.constrainAs(minuteColumn) {
+                top.linkTo(minuteUnitRef.top)
+                bottom.linkTo(minuteUnitRef.bottom, 6.dp)
+                start.linkTo(minuteUnitRef.end, 8.dp)
+                end.linkTo(secondDecadeRef.start, 8.dp)
+            }
+        )
+        NumberPicker(
+            selectableRange = 0..5,
+            selectedNumber = secondDecade,
+            onNumberSelect = { oldValue, newValue ->
+                onCountdownValueChange.onSecondDecadeChanged(
+                    newValue
+                )
+            },
+            modifier = Modifier.constrainAs(secondDecadeRef) {
+                top.linkTo(parent.top, (cellHeightDp.value * 4).dp)
+                start.linkTo(minuteColumn.end)
+                end.linkTo(secondUnitRef.start)
+            }
+        )
+        NumberPicker(
+            selectableRange = 0..9,
+            selectedNumber = seconds.rem(10).toInt(),
+            onNumberSelect = { oldValue, newValue ->
+                onCountdownValueChange.onSecondUnitChanged(
+                    newValue
+                )
+            },
+            modifier = Modifier.constrainAs(secondUnitRef) {
+                start.linkTo(secondDecadeRef.end)
+                top.linkTo(parent.top)
+                end.linkTo(parent.end)
+            }
+        )
+
+        Box(
+            modifier = Modifier
+                .requiredWidth((cellHeightDp.value * 8 + 8).dp)
+                .requiredHeight(cellHeightDp)
+                .border(border = BorderStroke(2.dp, Color.Black))
+                .constrainAs(selectedLineRef) {
+                    bottom.linkTo(parent.bottom)
+                    start.linkTo(parent.start)
+                    end.linkTo(parent.end)
+                    top.linkTo(parent.top)
+                }
         )
     }
 }
@@ -248,21 +410,21 @@ fun CountdownDisplay(
 
     ConstraintLayout(
         modifier = modifier
-            .requiredHeight(100.dp)
+            .requiredHeight(50.dp)
             .fillMaxWidth()
     ) {
 
-        val (hourDecade, hourUnit, minuteDecade, minuteUnit, secondDecade, secondUnit) = createRefs()
+        val (hourDecadeRef, hourUnit, hourColumn, minuteDecadeRef, minuteUnit, minuteColumn, secondDecadeRef, secondUnit) = createRefs()
 
         Number(
             animatedNumber = hourDecadeValue.value,
             transition = hourDecadeTransition,
             modifier = Modifier
                 .requiredSize(50.dp)
-                .constrainAs(hourDecade) {
+                .constrainAs(hourDecadeRef) {
                     top.linkTo(parent.top)
                     start.linkTo(parent.start, 8.dp)
-                    end.linkTo(hourUnit.start, 8.dp)
+                    end.linkTo(hourUnit.start, 4.dp)
                 }
         )
 
@@ -273,9 +435,20 @@ fun CountdownDisplay(
                 .requiredSize(50.dp)
                 .constrainAs(hourUnit) {
                     top.linkTo(parent.top)
-                    start.linkTo(hourDecade.end)
-                    end.linkTo(minuteDecade.start, 8.dp)
+                    start.linkTo(hourDecadeRef.end)
+                    end.linkTo(hourColumn.start)
                 }
+        )
+
+        Text(
+            fontSize = 20.sp,
+            text = ":",
+            modifier = Modifier.constrainAs(hourColumn) {
+                top.linkTo(hourUnit.top)
+                bottom.linkTo(hourUnit.bottom)
+                start.linkTo(hourUnit.end, 8.dp)
+                end.linkTo(minuteDecadeRef.start, 8.dp)
+            }
         )
 
         Number(
@@ -283,10 +456,10 @@ fun CountdownDisplay(
             transition = minuteDecadeTransition,
             modifier = Modifier
                 .requiredSize(50.dp)
-                .constrainAs(minuteDecade) {
+                .constrainAs(minuteDecadeRef) {
                     top.linkTo(parent.top)
-                    start.linkTo(hourUnit.end)
-                    end.linkTo(minuteUnit.start, 8.dp)
+                    start.linkTo(hourColumn.end)
+                    end.linkTo(minuteUnit.start, 4.dp)
                 }
         )
 
@@ -297,9 +470,20 @@ fun CountdownDisplay(
                 .requiredSize(50.dp)
                 .constrainAs(minuteUnit) {
                     top.linkTo(parent.top)
-                    start.linkTo(minuteDecade.end)
-                    end.linkTo(secondDecade.start, 8.dp)
+                    start.linkTo(minuteDecadeRef.end)
+                    end.linkTo(minuteColumn.start)
                 }
+        )
+
+        Text(
+            fontSize = 20.sp,
+            text = ":",
+            modifier = Modifier.constrainAs(minuteColumn) {
+                top.linkTo(hourUnit.top)
+                bottom.linkTo(hourUnit.bottom)
+                start.linkTo(minuteUnit.end, 8.dp)
+                end.linkTo(secondDecadeRef.start, 8.dp)
+            }
         )
 
         Number(
@@ -307,10 +491,10 @@ fun CountdownDisplay(
             transition = secondDecadeTransition,
             modifier = Modifier
                 .requiredSize(50.dp)
-                .constrainAs(secondDecade) {
+                .constrainAs(secondDecadeRef) {
                     top.linkTo(parent.top)
-                    start.linkTo(minuteUnit.end)
-                    end.linkTo(secondUnit.start, 8.dp)
+                    start.linkTo(minuteColumn.end)
+                    end.linkTo(secondUnit.start, 4.dp)
                 }
         )
 
@@ -321,7 +505,7 @@ fun CountdownDisplay(
                 .requiredSize(50.dp)
                 .constrainAs(secondUnit) {
                     top.linkTo(parent.top)
-                    start.linkTo(secondDecade.end)
+                    start.linkTo(secondDecadeRef.end)
                     end.linkTo(parent.end, 8.dp)
                 }
         )
@@ -363,60 +547,6 @@ fun findAppropriateAnimatedNumber(digit: Int): AnimatedNumber {
         }
         else -> AnimatedNumbers.Zero
     }
-}
-
-@Composable
-fun CountdownButton(
-    started: Boolean,
-    onCountdownButtonClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Button(
-        onClick = { onCountdownButtonClick() },
-        modifier = modifier
-    ) {
-        Text(text = if (started) "Stop" else "Start")
-    }
-}
-
-@Composable
-fun NumberVerticalPager(
-    selectedValue: Int,
-    onValueSelected: (Int) -> Unit
-) {
-
-}
-//
-//@Preview("Light Theme", widthDp = 360, heightDp = 640)
-//@Composable
-//fun LightPreview() {
-//    MyTheme {
-//        MyApp()
-//    }
-//}
-//
-//@Preview("Dark Theme", widthDp = 360, heightDp = 640)
-//@Composable
-//fun DarkPreview() {
-//    MyTheme(darkTheme = true) {
-//        MyApp()
-//    }
-//}
-
-@Preview
-@Composable
-fun PreviewDrawOne() {
-    Box(modifier = Modifier.fillMaxSize()) {
-        DrawOne(modifier = Modifier.requiredSize(100.dp))
-    }
-}
-
-@Composable
-fun DrawOne(modifier: Modifier = Modifier) {
-//    DrawNumber(
-//        pathNumber = Numbers.Nine,
-//        modifier = modifier
-//    )
 }
 
 @Composable
@@ -567,76 +697,122 @@ fun Number(
     }
 }
 
+
+fun notifySelectedItemChanged(
+    offset: Float,
+    cellNumber: Int,
+    cellHeight: Float,
+    previousSelectedItem: Int,
+    onNumberSelect: (Int, Int) -> Unit
+): Int {
+    val selectedItem =
+        (offset / cellHeight)
+    if (previousSelectedItem != selectedItem.toInt()) {
+        onNumberSelect(previousSelectedItem, selectedItem.toInt())
+    }
+    return selectedItem.toInt()
+}
+
 @Composable
-fun Gesture() {
-    val offset = remember { Animatable(Offset(0f, 0f), Offset.VectorConverter) }
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
+fun NumberPicker(
+    selectableRange: IntRange,
+    selectedNumber: Int,
+    onNumberSelect: (Int, Int) -> Unit,
+    modifier: Modifier = Modifier,
+    cellHeightDp: Dp = 20.dp
+) {
+    "Hoz1 retriggered".hozLog()
+    if (selectedNumber !in selectableRange) throw IllegalStateException("parameter selectableNumber should be in provided range")
+    val cellHeight = cellHeightDp.value * LocalDensity.current.density
+    val cellNumber = (selectableRange.last - selectableRange.first) + 1
+    val offset = remember { Animatable(cellHeight * selectedNumber) }
+    Column(
+        modifier = modifier
+            .requiredHeight((cellHeightDp.value * ((cellNumber * 2) - 1)).dp)
             .pointerInput(Unit) {
-                val circleSize = 100.dp.value * density
-                val offsetDecay = splineBasedDecay<Offset>(this)
                 coroutineScope {
+                    var previousSelectedItem: Int = selectedNumber
                     while (true) {
                         val pointerId = awaitPointerEventScope { awaitFirstDown().id }
-                        val velocityTracker = VelocityTracker()
                         offset.stop()
 
                         awaitPointerEventScope {
+
                             verticalDrag(pointerId) { change ->
                                 launch {
-                                    val newXOffset = offset.value.x + change.positionChange().x
-                                    val newYOffset = offset.value.y + change.positionChange().y
-//                                    "newXOffset = $newXOffset, (${size.width.toFloat()})".hozLog()
-                                    val correctedOffset = Offset(
+                                    val newYOffset = offset.value + change.positionChange().y
+                                    val correctedY =
                                         min(
-                                            max(newXOffset, 0f),
-                                            size.width.toFloat() - circleSize
-                                        ),
-                                        min(max(newYOffset, 0f), size.height.toFloat() - circleSize)
+                                            max(newYOffset, 0f),
+                                            size.height.toFloat() - cellHeight * cellNumber
+                                        )
+                                    offset.snapTo(correctedY)
+                                    previousSelectedItem = notifySelectedItemChanged(
+                                        offset.targetValue,
+                                        cellNumber,
+                                        cellHeight,
+                                        previousSelectedItem,
+                                        onNumberSelect
                                     )
-                                    offset.snapTo(correctedOffset)
                                 }
-                                velocityTracker.addPosition(
-                                    change.uptimeMillis,
-                                    change.position
-                                )
                             }
                         }
-                        val velocity = velocityTracker.calculateVelocity()
-                        offset.updateBounds(
-                            lowerBound = Offset(0f, 0f),
-                            upperBound = Offset(
-                                size.width.toFloat() - circleSize,
-                                size.height.toFloat() - circleSize
-                            )
+                        val rem = offset.value.rem(cellHeight)
+                        val correction =
+                            offset.value - if (rem <= cellHeight / 2) rem else (rem - cellHeight)
+                        offset.animateTo(correction)
+                        previousSelectedItem = notifySelectedItemChanged(
+                            offset.targetValue,
+                            cellNumber,
+                            cellHeight,
+                            previousSelectedItem,
+                            onNumberSelect
                         )
-                        launch {
-                            offset.animateDecay(Offset(velocity.x, velocity.y), offsetDecay)
-                        }
                     }
                 }
             }
     ) {
-        Circle(modifier = Modifier
-            .offset {
-                "offsetting ${offset.value}".hozLog()
-                offset.value.toIntOffset()
-            })
+        Box(
+            modifier = Modifier
+                .offset {
+                    IntOffset(0, offset.value.toInt())
+                }
+        ) {
+            Column(
+                modifier = Modifier
+                    .background(color = Color.Blue, shape = RoundedCornerShape(CornerSize(50)))
+            ) {
+                val selectedCell =
+                    (offset.value / cellHeight).toInt()
+                selectableRange.reversed().forEachIndexed { index, i ->
+                    NumberPickerCell(
+                        text = "$i",
+                        cellHeight = cellHeightDp,
+                        isSelected = selectedCell == i
+                    )
+                }
+            }
+        }
     }
 }
 
 @Composable
-fun Circle(modifier: Modifier = Modifier) {
+fun NumberPickerCell(
+    text: String,
+    cellHeight: Dp,
+    modifier: Modifier = Modifier,
+    isSelected: Boolean = false
+) {
     Box(
         modifier = modifier
-            .background(color = Color.Blue, shape = CircleShape)
-            .requiredSize(50.dp)
-    )
+            .requiredSize(cellHeight),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text = text, color = Color.White)
+    }
 }
-
-private fun Offset.toIntOffset() = IntOffset(x.roundToInt(), y.roundToInt())
 
 fun String.hozLog() {
     Log.d("Hoz", this)
 }
+
