@@ -19,14 +19,38 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.*
-import androidx.compose.foundation.gestures.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Transition
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.updateTransition
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.verticalDrag
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.requiredWidth
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.*
-import androidx.compose.runtime.*
+import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
+import androidx.compose.material.Scaffold
+import androidx.compose.material.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -35,12 +59,17 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.*
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
-import com.example.androiddevchallenge.ui.theme.*
-import kotlinx.coroutines.*
-import java.lang.IllegalStateException
+import com.example.androiddevchallenge.ui.theme.AnimatedNumber
+import com.example.androiddevchallenge.ui.theme.AnimatedNumbers
+import com.example.androiddevchallenge.ui.theme.MyTheme
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.Duration
 import kotlin.math.max
 import kotlin.math.min
@@ -104,10 +133,8 @@ fun MyApp() {
             ) {
                 Text(text = if (started) "Stop" else "Start")
             }
-
         }
     }
-
 }
 
 @Composable
@@ -201,7 +228,6 @@ fun CountdownView(
                         animatableCounter = animatableCounter.minusSeconds(secondsUnit).plusSeconds(secondUnit.toLong())
                         onCountdownValueChange(animatableCounter)
                     }
-
                 },
                 modifier = Modifier.constrainAs(picker) {
                     start.linkTo(parent.start)
@@ -509,7 +535,6 @@ fun CountdownDisplay(
                     end.linkTo(parent.end, 8.dp)
                 }
         )
-
     }
 }
 
@@ -697,7 +722,6 @@ fun Number(
     }
 }
 
-
 fun notifySelectedItemChanged(
     offset: Float,
     cellNumber: Int,
@@ -815,4 +839,3 @@ fun NumberPickerCell(
 fun String.hozLog() {
     Log.d("Hoz", this)
 }
-
